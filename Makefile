@@ -1,16 +1,11 @@
-CC     = cc
-CFLAGS = -O2 -Wall
-INC    = -framework IOKit
-PREFIX = /Users/jiaxi/Downloads
-EXEC   = osx-cpu-temp
+PACKAGE = istatus
+PREFIX = /usr/local
 
-build : $(EXEC)
+all clean:
+	cd src && $(MAKE) $@
 
-clean : 
-	rm $(EXEC)
+install: all
+	install -d $(PREFIX)/bin
+	install src/$(PACKAGE) $(PREFIX)/bin
 
-$(EXEC) : smc.c
-	$(CC) $(CFLAGS) $(INC) -o $@ $?
-
-install : $(EXEC)
-	install -d $(EXEC) $(PREFIX)/bin/$(EXEC)
+.PHONY: all clean install
