@@ -17,9 +17,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#include <CoreFoundation/CoreFoundation.h>
+#include <IOKit/IOKitLib.h>
+#include <IOKit/ps/IOPSKeys.h>
+#include <IOKit/ps/IOPowerSources.h>
+
 #ifndef __SMC_H__
 #define __SMC_H__
-#endif
 
 #define VERSION               "0.01"
 
@@ -40,13 +44,16 @@
 
 // key values
 #define SMC_KEY_CPU_TEMP      "TC0P"
-#define SMC_KEY_FAN0_RPM_CUR  "F0Ac"
+#define SMC_KEY_FAN_SPEED     "F%dAc"
+#define SMC_KEY_FAN_NUM       "FNum"
+#define SMC_KEY_BATTERY_TEMP  "TB0T"
+
 
 typedef struct {
     char                  major;
     char                  minor;
     char                  build;
-    char                  reserved[1]; 
+    char                  reserved[1];
     UInt16                release;
 } SMCKeyData_vers_t;
 
@@ -64,32 +71,43 @@ typedef struct {
     char                  dataAttributes;
 } SMCKeyData_keyInfo_t;
 
-typedef char              SMCBytes_t[32]; 
+typedef char              SMCBytes_t[32];
 
 typedef struct {
-  UInt32                  key; 
-  SMCKeyData_vers_t       vers; 
-  SMCKeyData_pLimitData_t pLimitData;
-  SMCKeyData_keyInfo_t    keyInfo;
-  char                    result;
-  char                    status;
-  char                    data8;
-  UInt32                  data32;
-  SMCBytes_t              bytes;
+    UInt32                  key;
+    SMCKeyData_vers_t       vers;
+    SMCKeyData_pLimitData_t pLimitData;
+    SMCKeyData_keyInfo_t    keyInfo;
+    char                    result;
+    char                    status;
+    char                    data8;
+    UInt32                  data32;
+    SMCBytes_t              bytes;
 } SMCKeyData_t;
 
 typedef char              UInt32Char_t[5];
 
 typedef struct {
-  UInt32Char_t            key;
-  UInt32                  dataSize;
-  UInt32Char_t            dataType;
-  SMCBytes_t              bytes;
+    UInt32Char_t            key;
+    UInt32                  dataSize;
+    UInt32Char_t            dataType;
+    SMCBytes_t              bytes;
 } SMCVal_t;
 
-
 // prototypes
+// - fan & temperature
+kern_return_t SMCOpen(void);
+kern_return_t SMCClose();
+float SMCGetFanSpeed(int fanNum);
+int SMCGetFanNumber(char *key);
 double SMCGetTemperature(char *key);
-kern_return_t SMCSetFanRpm(char *key, int rpm);
-int SMCGetFanRpm(char *key);
+// - battery
+const int hasBattery();
+const char* getBatteryHealth();
+int getDesignCycleCount();
+int getBatteryCharge();
+CFTypeRef IOPSCopyPowerSourcesInfo(void);
+CFArrayRef IOPSCopyPowerSourcesList(CFTypeRef blob);
+CFDictionaryRef IOPSGetPowerSourceDescription(CFTypeRef blob, CFTypeRef ps);
 
+#endif // __SMC_H__

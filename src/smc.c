@@ -19,7 +19,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <IOKit/IOKitLib.h>
 
 #include "smc.h"
 
@@ -40,10 +39,28 @@ UInt32 _strtoul(char *str, int size, int base)
     return total;
 }
 
+float _strtof(unsigned char *str, int size, int e)
+{
+    float total = 0;
+    int i;
+
+    for (i = 0; i < size; i++)
+    {
+        if (i == (size - 1))
+            total += (str[i] & 0xff) >> e;
+        else
+            total += str[i] << (size - 1 - i) * (8 - e);
+    }
+
+    total += (str[size-1] & 0x03) * 0.25;
+
+    return total;
+}
+
 void _ultostr(char *str, UInt32 val)
 {
     str[0] = '\0';
-    sprintf(str, "%c%c%c%c", 
+    sprintf(str, "%c%c%c%c",
             (unsigned int) val >> 24,
             (unsigned int) val >> 16,
             (unsigned int) val >> 8,
@@ -53,11 +70,14 @@ void _ultostr(char *str, UInt32 val)
 kern_return_t SMCOpen(void)
 {
     kern_return_t result;
+    mach_port_t   masterPort;
     io_iterator_t iterator;
     io_object_t   device;
 
+    result = IOMasterPort(MACH_PORT_NULL, &masterPort);
+
     CFMutableDictionaryRef matchingDictionary = IOServiceMatching("AppleSMC");
-    result = IOServiceGetMatchingServices(kIOMasterPortDefault, matchingDictionary, &iterator);
+    result = IOServiceGetMatchingServices(masterPort, matchingDictionary, &iterator);
     if (result != kIOReturnSuccess)
     {
         printf("Error: IOServiceGetMatchingServices() = %08x\n", result);
@@ -154,9 +174,9 @@ double SMCGetTemperature(char *key)
         // read succeeded - check returned value
         if (val.dataSize > 0) {
             if (strcmp(val.dataType, DATATYPE_SP78) == 0) {
-                // convert sp78 value to temperature
-                int intValue = val.bytes[0] * 256 + (unsigned char)val.bytes[1];
-                return intValue / 256.0;
+                // convert fp78 value to temperature
+                int intValue = (val.bytes[0] * 256 + val.bytes[1]) >> 2;
+                return intValue / 64.0;
             }
         }
     }
@@ -164,75 +184,129 @@ double SMCGetTemperature(char *key)
     return 0.0;
 }
 
-double SMCGetFanSpeed(char *key)
+float SMCGetFanSpeed(int fanNum)
+{
+    SMCVal_t val;
+    kern_return_t result;
+
+    UInt32Char_t  key;
+    sprintf(key, SMC_KEY_FAN_SPEED, fanNum);
+    result = SMCReadKey(key, &val);
+    return _strtof((unsigned char *)val.bytes, val.dataSize, 2);
+}
+
+int SMCGetFanNumber(char *key)
 {
     SMCVal_t val;
     kern_return_t result;
 
     result = SMCReadKey(key, &val);
-    if (result == kIOReturnSuccess) {
-        // read succeeded - check returned value
-        if (val.dataSize > 0) {
-	    if (strcmp(val.dataType, DATATYPE_FPE2) == 0) {
-		    // convert fpe2 value to rpm
-		    int intValue = (unsigned char)val.bytes[0] * 256 + (unsigned char)val.bytes[1];
-		    return intValue / 4.0;
-	    }
-        }
-    }
-    // read failed
-    return 0.0;
+    return _strtoul((char *)val.bytes, val.dataSize, 10);
 }
 
-
-double convertToFahrenheit(double celsius) {
-  return (celsius * (9.0 / 5.0)) + 32.0;
-}
-
-int main(int argc, char *argv[])
+/* Battery info
+ * Ref: http://www.newosxbook.com/src.jl?tree=listings&file=bat.c
+ *      https://developer.apple.com/library/mac/documentation/IOKit/Reference/IOPowerSources_header_reference/Reference/reference.html
+ */
+void dumpDict (CFDictionaryRef Dict)
 {
-    char scale = 'C';
-    int fan = 0;
+    // Helper function to just dump a CFDictioary as XML
+    CFErrorRef cfError;
+    CFDataRef xml = CFPropertyListCreateData(kCFAllocatorDefault, (CFPropertyListRef)Dict, kCFPropertyListXMLFormat_v1_0, 0, &cfError);
+    if (xml) { write(1, CFDataGetBytePtr(xml), CFDataGetLength(xml)); CFRelease(xml); }
+}
 
-    int c;
-    while ((c = getopt(argc, argv, "CFf")) != -1) {
-      switch (c) {
-        case 'F':
-        case 'C':
-          scale = c;
-          break;
-        case 'f':
-	  fan = 1;
-	  break;
-      }
+CFDictionaryRef powerSourceInfo(int Debug)
+{
+    CFTypeRef       powerInfo;
+    CFArrayRef      powerSourcesList;
+    CFDictionaryRef powerSourceInformation;
+
+    powerInfo = IOPSCopyPowerSourcesInfo();
+
+    if(! powerInfo) return NULL;
+
+    powerSourcesList = IOPSCopyPowerSourcesList(powerInfo);
+    if(!powerSourcesList) {
+        CFRelease(powerInfo);
+        return NULL;
     }
 
-    int nfans = 0;
-    double fans[10];
+    // Should only get one source. But in practice, check for > 0 sources
+    if (CFArrayGetCount(powerSourcesList))
+    {
+        powerSourceInformation = IOPSGetPowerSourceDescription(powerInfo, CFArrayGetValueAtIndex(powerSourcesList, 0));
 
-    SMCOpen();
-    double temperature = SMCGetTemperature(SMC_KEY_CPU_TEMP);
-    for (int i = 0; i < 10; i++) {
-	    char key[5] = SMC_KEY_FAN0_RPM_CUR;
-	    key[1] += i;
-	    double speed = SMCGetFanSpeed(key);
-	    if (speed != 0) {
-		    fans[nfans++] = speed;
-	    }
-    }
-    SMCClose();
+        if (Debug) dumpDict (powerSourceInformation);
 
-    if (scale == 'F') {
-      temperature = convertToFahrenheit(temperature);
+        //CFRelease(powerInfo);
+        //CFRelease(powerSourcesList);
+        return powerSourceInformation;
     }
 
-    printf("%0.1f°%c", temperature, scale);
-    if (fan) {
-	for (int i = 0; i < nfans; i++) {
-	    printf(" %0.1frpm", fans[i]);
-	}
-    }
-    printf("\n");
+    CFRelease(powerInfo);
+    CFRelease(powerSourcesList);
+    return NULL;
+}
 
-    return 0;
+int getDesignCycleCount() {
+    CFDictionaryRef powerSourceInformation = powerSourceInfo(0);
+
+    if(powerSourceInformation == NULL)
+        return 0;
+
+    CFNumberRef designCycleCountRef = (CFNumberRef)  CFDictionaryGetValue(powerSourceInformation, CFSTR("DesignCycleCount"));
+    uint32_t    designCycleCount;
+    if ( ! CFNumberGetValue(designCycleCountRef,  // CFNumberRef number,
+                            kCFNumberSInt32Type,  // CFNumberType theType,
+                            &designCycleCount))   // void *valuePtr);
+        return 0;
+    else
+        return designCycleCount;
+}
+
+const char* getBatteryHealth() {
+    CFDictionaryRef powerSourceInformation = powerSourceInfo(0);
+
+    if(powerSourceInformation == NULL)
+        return "Unknown";
+
+    CFStringRef batteryHealthRef = (CFStringRef) CFDictionaryGetValue(powerSourceInformation, CFSTR("BatteryHealth"));
+
+    const char *batteryHealth = CFStringGetCStringPtr(batteryHealthRef, // CFStringRef theString,
+                                                kCFStringEncodingMacRoman); //CFStringEncoding encoding);
+    if(batteryHealth == NULL)
+        return "unknown";
+
+    return batteryHealth;
+}
+
+const int hasBattery() {
+  CFDictionaryRef powerSourceInformation = powerSourceInfo(0);
+  return !(powerSourceInformation == NULL);
+}
+
+int getBatteryCharge() {
+    CFNumberRef currentCapacity;
+    CFNumberRef maximumCapacity;
+
+    int iCurrentCapacity;
+    int iMaximumCapacity;
+    int charge;
+
+    CFDictionaryRef powerSourceInformation;
+
+    powerSourceInformation = powerSourceInfo(0);
+    if (powerSourceInformation == NULL)
+        return 0;
+
+    currentCapacity = CFDictionaryGetValue(powerSourceInformation, CFSTR(kIOPSCurrentCapacityKey));
+    maximumCapacity = CFDictionaryGetValue(powerSourceInformation, CFSTR(kIOPSMaxCapacityKey));
+
+    CFNumberGetValue(currentCapacity, kCFNumberIntType, &iCurrentCapacity);
+    CFNumberGetValue(maximumCapacity, kCFNumberIntType, &iMaximumCapacity);
+
+    charge = (float)iCurrentCapacity / iMaximumCapacity * 100;
+
+    return charge;
 }
