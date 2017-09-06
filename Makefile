@@ -13,4 +13,4 @@ $(EXEC) : smc.c
 	$(CC) $(CFLAGS) $(INC) -o $@ $?
 
 install : $(EXEC)
-	install -v $(EXEC) $(PREFIX)/bin/$(EXEC)
+	install -d $(EXEC) $(PREFIX)/bin/$(EXEC)
