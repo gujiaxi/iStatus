@@ -7,6 +7,9 @@
 
 #include "smc.h"
 #include "bat.h"
+#include "cpu.h"
+#include "disk.h"
+#include "net.h"
 
 int main(int argc, char *argv[])
 {
@@ -34,31 +37,48 @@ int main(int argc, char *argv[])
     /*
      * output results
      */
-    // cpu
-    printf ("--- CPU ---\n");
-    printf ("CPU temperature:\t%0.1f°C\n", cpu_temp);
-    printf ("\n");
-    // fan
-    printf ("--- Fan ---\n");
+    // cpu & fan
+    char cpu_brand[64];
+    getCpuBrand(cpu_brand);
+    printf("--- CPU ---\n");
+    printf("CPU Brand:\t\t%s\n", cpu_brand);
+    printf("CPU temperature:\t%0.1f°C\n", cpu_temp);
     for (int i = 0; i < fan_num; i++) {
-        printf ("Fan %i speed:\t\t%0.0f RPM\n", i, fan_speed[i]);
+        printf("Fan %i speed:\t\t%0.0f RPM\n", i, fan_speed[i]);
     }
-    printf ("\n");
+    printf("\n");
     // battery
-    printf ("--- Battery ---\n");
+    printf("--- Battery ---\n");
     if (hasBattery()) {
         const char * bat_health = getBatteryHealth();
         int bat_cycle = getBatteryCycle();
         int bat_cycle_design = getBatteryDesignCycle();
         int bat_charge_max = getBatteryMaxCapacity();
         int bat_charge_design = getBatteryDesignCapacity();
-        printf ("Battery temperature:\t%0.1f°C\n", bat_temp);
-        printf ("Battery cycle:\t\t%i counts\t%0.1f%%\n", bat_cycle, 100.0 * bat_cycle / bat_cycle_design);
-        printf ("Battery capacity:\t%i mAh\t%0.1f%%\n", bat_charge_max, 100.0 * bat_charge_max / bat_charge_design);
-        printf ("Battery health:\t\t%s\n", bat_health);
+        printf("Battery temperature:\t%0.1f°C\n", bat_temp);
+        printf("Battery cycle:\t\t%i counts\t%0.1f%%\n", bat_cycle, 100.0 * bat_cycle / bat_cycle_design);
+        printf("Battery capacity:\t%i mAh\t%0.1f%%\n", bat_charge_max, 100.0 * bat_charge_max / bat_charge_design);
+        printf("Battery health:\t\t%s\n", bat_health);
     } else {
-        printf ("--- No Battery found on this machine. ---\n");
+        printf("--- No Battery found on this machine. ---\n");
     }
+    printf("\n");
+    // disk
+    char disk_size[16];
+    char disk_used[16];
+    char disk_cap[16];
+    getDiskSize(disk_size);
+    getDiskUsed(disk_used);
+    getDiskCap(disk_cap);
+    printf("--- Disk ---\n");
+    printf("Disk Used:\t\t%s / %s\t%s%%\n", disk_used, disk_size, disk_cap);
+    printf("\n");
+    // network
+    char net_addr[32];
+    getNetAddr(net_addr);
+    printf("--- Network ---\n");
+    printf("IP Address:\t\t%s\n", net_addr);
+    printf("\n");
 
     return 0;
 }

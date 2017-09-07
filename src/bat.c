@@ -3,43 +3,44 @@
 #include <string.h>
 
 #include "bat.h"
-
-int grepIoreg(char * keyword) {
-    FILE * stream;
-    char buf[64] = {'\0'};
-    char query[64] = {'\0'};
-    char * pSubstr;
-    int result;
-    sprintf(query, "ioreg -rn AppleSmartBattery | grep \"%s\"", keyword);
-    stream = popen(query, "r");
-    fread(buf, sizeof(char), sizeof(buf), stream);
-    pSubstr = strrchr(buf, ' ');
-    result = atoi(pSubstr + 1);
-    pclose(stream);
-    return result;
-}
+#include "utils.h"
 
 int getBatteryCycle()
 {
-    return grepIoreg("\\\"CycleCount\\\"");
+    char result[8];
+    char * query = "ioreg -rn AppleSmartBattery | grep \"\\\"CycleCount\\\"\" | awk '{print $3}'";
+    getResultByQuery(query, result);
+    return atoi(result);
 }
 
 int getBatteryDesignCycle()
 {
-    return grepIoreg("DesignCycleCount");
+    char result[8];
+    char * query = "ioreg -rn AppleSmartBattery | grep \"DesignCycleCount\" | awk '{print $3}'";
+    getResultByQuery(query, result);
+    return atoi(result);
 }
 
 int getBatteryCurCapacity()
 {
-    return grepIoreg("CurrentCapacity");
+    char result[8];
+    char * query = "ioreg -rn AppleSmartBattery | grep \"CurrentCapacity\" | awk '{print $3}'";
+    getResultByQuery(query, result);
+    return atoi(result);
 }
 
 int getBatteryMaxCapacity()
 {
-    return grepIoreg("MaxCapacity");
+    char result[8];
+    char * query = "ioreg -rn AppleSmartBattery | grep \"MaxCapacity\" | awk '{print $3}'";
+    getResultByQuery(query, result);
+    return atoi(result);
 }
 
 int getBatteryDesignCapacity()
 {
-    return grepIoreg("DesignCapacity");
+    char result[8];
+    char * query = "ioreg -rn AppleSmartBattery | grep \"DesignCapacity\" | awk '{print $3}'";
+    getResultByQuery(query, result);
+    return atoi(result);
 }
