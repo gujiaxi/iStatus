@@ -16,7 +16,7 @@ int getBatteryCycle()
 int getBatteryDesignCycle()
 {
     char result[8];
-    char * query = "ioreg -rn AppleSmartBattery | grep \"DesignCycleCount\" | awk '{print $3}'";
+    char * query = "ioreg -rn AppleSmartBattery | grep \"DesignCycleCount9C\" | awk '{print $3}'";
     getResultByQuery(query, result);
     return atoi(result);
 }

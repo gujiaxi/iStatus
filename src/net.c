@@ -7,7 +7,7 @@
 
 int getNetAddr(char * result)
 {
-    char * query = "ifconfig | grep inet | grep -v inet6 | cut -d\" \" -f2 | tail -n1";
+    char * query = "ifconfig | grep inet | grep -v inet6 | cut -d\" \" -f2 | head -n2 | tail -n1";
     getResultByQuery(query, result);
     if (strlen(result) != 0) {
         result[strlen(result) - 1] = '\0';
