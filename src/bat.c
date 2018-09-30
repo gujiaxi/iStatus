@@ -8,7 +8,7 @@
 int getBatteryCycle()
 {
     char result[8];
-    char * query = "ioreg -rn AppleSmartBattery | grep \"\\\"CycleCount\\\"\" | awk '{print $3}'";
+    char * query = "ioreg -rn AppleSmartBattery | grep \"\\\"CycleCount\\\" = \" | awk '{print $3}'";
     getResultByQuery(query, result);
     return atoi(result);
 }
@@ -16,7 +16,7 @@ int getBatteryCycle()
 int getBatteryDesignCycle()
 {
     char result[8];
-    char * query = "ioreg -rn AppleSmartBattery | grep \"DesignCycleCount9C\" | awk '{print $3}'";
+    char * query = "ioreg -rn AppleSmartBattery | grep \"DesignCycleCount9C = \" | awk '{print $3}'";
     getResultByQuery(query, result);
     return atoi(result);
 }
@@ -24,7 +24,7 @@ int getBatteryDesignCycle()
 int getBatteryCurCapacity()
 {
     char result[8];
-    char * query = "ioreg -rn AppleSmartBattery | grep \"CurrentCapacity\" | awk '{print $3}'";
+    char * query = "ioreg -rn AppleSmartBattery | grep \"CurrentCapacity = \" | awk '{print $3}'";
     getResultByQuery(query, result);
     return atoi(result);
 }
@@ -32,7 +32,7 @@ int getBatteryCurCapacity()
 int getBatteryMaxCapacity()
 {
     char result[8];
-    char * query = "ioreg -rn AppleSmartBattery | grep \"MaxCapacity\" | awk '{print $3}'";
+    char * query = "ioreg -rn AppleSmartBattery | grep \"MaxCapacity = \" | awk '{print $3}'";
     getResultByQuery(query, result);
     return atoi(result);
 }
@@ -40,7 +40,7 @@ int getBatteryMaxCapacity()
 int getBatteryDesignCapacity()
 {
     char result[8];
-    char * query = "ioreg -rn AppleSmartBattery | grep \"DesignCapacity\" | awk '{print $3}'";
+    char * query = "ioreg -rn AppleSmartBattery | grep \"DesignCapacity = \" | awk '{print $3}'";
     getResultByQuery(query, result);
     return atoi(result);
 }
