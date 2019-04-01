@@ -53,9 +53,11 @@ int main(int argc, char *argv[])
         const char * bat_health = getBatteryHealth();
         int bat_cycle = getBatteryCycle();
         int bat_cycle_design = getBatteryDesignCycle();
+        int bat_charge_cur = getBatteryCurCapacity();
         int bat_charge_max = getBatteryMaxCapacity();
         int bat_charge_design = getBatteryDesignCapacity();
         printf("Battery temperature:\t%0.1f°C\n", bat_temp);
+        printf("Battery charge:\t\t%0.1f%%\n", 100.0 * bat_charge_cur / bat_charge_max);
         printf("Battery cycle:\t\t%i counts\t%0.1f%%\n", bat_cycle, 100.0 * bat_cycle / bat_cycle_design);
         printf("Battery capacity:\t%i mAh\t%0.1f%%\n", bat_charge_max, 100.0 * bat_charge_max / bat_charge_design);
         printf("Battery health:\t\t%s\n", bat_health);
